@@ -1,0 +1,8 @@
+# https://matplotlib.org/users/usetex.html
+use_tex: false
+# Font size for rendering LaTeX
+font_size: 18
+# Dots per inch for PNG thumbnail
+thumbnail_dpi: 100
+# Command without prefix !
+command: tex
