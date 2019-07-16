@@ -4,5 +4,8 @@ use_tex: false
 font_size: 18
 # Dots per inch for PNG thumbnail
 thumbnail_dpi: 100
+# Which format to output the image in.
+# Thumbnail is always PNG regardless of this option.
+mode: svg
 # Command without prefix !
 command: tex

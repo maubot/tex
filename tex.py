@@ -16,6 +16,9 @@
 from typing import Type
 from io import BytesIO
 
+import matplotlib
+
+matplotlib.use("agg")
 import matplotlib.pyplot as plot
 from PIL import Image
 
@@ -30,6 +33,7 @@ class Config(BaseProxyConfig):
         helper.copy("use_tex")
         helper.copy("font_size")
         helper.copy("thumbnail_dpi")
+        helper.copy("mode")
         helper.copy("command")
 
 
@@ -50,39 +54,49 @@ class TexBot(Plugin):
         fig = plot.figure(figsize=(0.01, 0.01))
         text = fig.text(0, 0, rf"${formula}$",
                         fontsize=self.config["font_size"],
-                        use_tex=self.config["use_tex"])
+                        usetex=self.config["use_tex"])
+        info = ImageInfo(thumbnail_info=ThumbnailInfo())
 
         output = BytesIO()
-        fig.savefig(output, format="svg", bbox_inches="tight")
-        data = output.getvalue()
-        svg_uri = await self.client.upload_media(data, "image/svg+xml", "tex.svg")
-        svg_len = len(data)
+        if self.config["mode"] == "svg":
+            fig.savefig(output, format="svg", bbox_inches="tight")
+            data = output.getvalue()
+
+            file_name = "tex.svg"
+            info.mimetype = "image/svg+xml"
+            info.size = len(data)
+
+            bb = text.get_window_extent(fig.canvas.get_renderer())
+            info.width, info.height = int(bb.width), int(bb.height)
+
+            uri = await self.client.upload_media(data, info.mimetype, file_name)
+        else:
+            fig.savefig(output, dpi=300, format="png", bbox_inches="tight")
+            data = output.getvalue()
+
+            file_name = "tex.png"
+            info.mimetype = "image/png"
+            info.size = len(data)
+
+            output.seek(0)
+            img = Image.open(output)
+            info.width, info.height = img.size
+
+            uri = await self.client.upload_media(data, info.mimetype, file_name)
+
         output.seek(0)
         output.truncate(0)
         fig.savefig(output, dpi=self.config["thumbnail_dpi"], format="png", bbox_inches="tight")
 
         data = output.getvalue()
-        png_uri = await self.client.upload_media(data, "image/png", "tex.png")
-        png_len = len(data)
+        info.thumbnail_url = await self.client.upload_media(data, "image/png", "tex.thumb.png")
+        info.thumbnail_info.size = len(data)
         plot.close(fig)
 
         output.seek(0)
         img = Image.open(output)
-        png_width, png_height = img.size
+        info.thumbnail_info.width, info.thumbnail_info.height = img.size
         img.close()
         output.close()
 
-        bb = text.get_window_extent(fig.canvas.get_renderer())
-        await self.client.send_image(evt.room_id, svg_uri, info=ImageInfo(
-            mimetype="image/svg+xml",
-            size=svg_len,
-            width=bb.width,
-            height=bb.height,
-            thumbnail_url=png_uri,
-            thumbnail_info=ThumbnailInfo(
-                mimetype="image/png",
-                size=png_len,
-                width=png_width,
-                height=png_height,
-            ),
-        ), file_name="tex.svg")
+        await self.client.send_image(evt.room_id, uri, info=info, file_name=file_name)
