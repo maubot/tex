@@ -90,6 +90,7 @@ class TexBot(Plugin):
 
         data = output.getvalue()
         info.thumbnail_url = await self.client.upload_media(data, "image/png", "tex.thumb.png")
+        info.thumbnail_info.mimetype = "image/png"
         info.thumbnail_info.size = len(data)
         plot.close(fig)
 
