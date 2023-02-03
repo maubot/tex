@@ -51,8 +51,12 @@ class TexBot(Plugin):
     @command.new(name=lambda self: self.config["command"], help="Render LaTeX")
     @command.argument("formula", required=True, pass_raw=True)
     async def tex(self, evt: MessageEvent, formula: str) -> None:
+        # prevent escaping math mode
+        # (' ' prevents unexpected interactions, and isn't rendered)
+        formula = formula.replace("$", " \\$")
+
         fig = plot.figure(figsize=(0.01, 0.01))
-        text = fig.text(0, 0, rf"${formula}$",
+        text = fig.text(0, 0, rf"$ {formula} $",
                         fontsize=self.config["font_size"],
                         usetex=self.config["use_tex"])
         info = ImageInfo(thumbnail_info=ThumbnailInfo())
